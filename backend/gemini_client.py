@@ -1,12 +1,18 @@
 """
 Thin wrapper around the Gemini API for the civic assistant chat.
-Centralising the prompt + config here keeps main.py clean and makes
-the AI behaviour easy to tune/test independently.
-Uses the current `google-genai` SDK (google.generativeai is deprecated).
+
+Centralizing the prompt + configuration here keeps main.py clean and
+makes the AI behavior easy to tune/test independently. Uses the current
+google-genai SDK (google.generativeai is deprecated).
 """
 import os
+import logging
+from typing import Optional
+
 from google import genai
 from google.genai import types
+
+logger = logging.getLogger("smart_bharat")
 
 LANGUAGE_NAMES = {"en": "English", "hi": "Hindi", "te": "Telugu"}
 
@@ -21,10 +27,22 @@ Your job:
 - Never ask for sensitive personal data like Aadhaar number, bank details, or passwords.
 Reply ONLY in the language requested, keeping paragraphs short."""
 
-_client = None
+_client: Optional[genai.Client] = None
 
 
 def _get_client() -> genai.Client:
+    """
+    Get or initialize the Gemini API client.
+    
+    Uses lazy initialization with a module-level singleton to avoid
+    multiple API client instantiations. Reads GEMINI_API_KEY from environment.
+    
+    Returns:
+        genai.Client: Initialized Gemini API client.
+    
+    Raises:
+        RuntimeError: If GEMINI_API_KEY is not set in environment.
+    """
     global _client
     if _client is None:
         api_key = os.environ.get("GEMINI_API_KEY")
@@ -35,7 +53,22 @@ def _get_client() -> genai.Client:
 
 
 def ask_gemini(message: str, language: str = "en") -> str:
-    """Send a citizen query to Gemini and return a plain-text reply."""
+    """
+    Send a citizen query to Gemini and return a plain-text reply.
+    
+    Constructs a system-instructed prompt in the requested language,
+    calls the Gemini API, and returns the text response.
+    
+    Args:
+        message: Citizen query text (max 1000 chars enforced by models.py).
+        language: Response language code (default "en", falls back to "en" for unsupported).
+    
+    Returns:
+        Plain-text reply from Gemini model.
+    
+    Raises:
+        RuntimeError: If Gemini API key is missing or response is empty.
+    """
     lang_name = LANGUAGE_NAMES.get(language, "English")
     client = _get_client()
     prompt = f"[Respond in {lang_name}]\n\nCitizen query: {message}"
@@ -48,3 +81,4 @@ def ask_gemini(message: str, language: str = "en") -> str:
     if not text:
         raise RuntimeError("Empty response from Gemini")
     return text.strip()
+

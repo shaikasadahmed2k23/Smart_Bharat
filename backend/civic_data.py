@@ -1,10 +1,17 @@
 """
-Curated catalog of common Indian public services and their document
-requirements. Keeping this as structured data (instead of relying purely
-on the LLM) makes recommendations deterministic, testable, and fast.
+Curated catalog of common Indian public services and their document requirements.
+
+Keeping this as structured data (instead of relying purely on the LLM)
+makes recommendations deterministic, testable, and fast. Search and lookup
+functions are cached with LRU since PUBLIC_SERVICES is static.
 """
+import re
+from functools import lru_cache
+from difflib import SequenceMatcher
+from typing import Optional
 
 PUBLIC_SERVICES = [
+
     {
         "name": "Aadhaar Card",
         "keywords": ["identity", "id proof", "aadhaar", "uid", "biometric"],
@@ -64,8 +71,21 @@ PUBLIC_SERVICES = [
 ]
 
 
+@lru_cache(maxsize=128)
 def search_services(query: str, top_k: int = 3) -> list[dict]:
-    """Simple keyword-overlap ranking over the curated service catalog."""
+    """
+    Search the curated service catalog using keyword overlap ranking.
+    
+    Cached with LRU since PUBLIC_SERVICES is static. Handles variations
+    and partial matches to improve recall over exact-match lookup.
+    
+    Args:
+        query: User search query string (e.g., "I need passport to travel").
+        top_k: Maximum number of results to return (default 3).
+    
+    Returns:
+        List of up to top_k service dictionaries, sorted by relevance score.
+    """
     query_lower = query.lower()
     scored = []
     for service in PUBLIC_SERVICES:
@@ -78,22 +98,38 @@ def search_services(query: str, top_k: int = 3) -> list[dict]:
     return [s for _, s in scored[:top_k]]
 
 
-import re
-from difflib import SequenceMatcher
-
-
 def _normalize(text: str) -> str:
-    """Lowercase, strip punctuation, collapse whitespace for robust matching."""
+    """
+    Normalize text for fuzzy matching.
+    
+    Converts to lowercase, removes punctuation, and collapses whitespace
+    to enable typo-tolerant service name lookups.
+    
+    Args:
+        text: Raw input text.
+    
+    Returns:
+        Normalized text string.
+    """
     text = text.lower().strip()
     text = re.sub(r"[^a-z0-9\s]", "", text)
     return re.sub(r"\s+", " ", text)
 
 
-def find_service_by_name(name: str) -> dict | None:
+@lru_cache(maxsize=128)
+def find_service_by_name(name: str) -> Optional[dict]:
     """
     Fuzzy-match a user-typed service name against the catalog.
-    Handles typos (e.g. 'aadhar' -> 'Aadhaar') via similarity scoring
-    instead of a brittle exact/substring check.
+    
+    Handles typos (e.g., 'aadhar' -> 'Aadhaar Card') via SequenceMatcher
+    similarity scoring. Returns exact/substring match if found; otherwise
+    returns best match if score >= 0.6. Cached with LRU for efficiency.
+    
+    Args:
+        name: Service name from user input (possibly misspelled).
+    
+    Returns:
+        Service dictionary if found (exact or fuzzy match), None otherwise.
     """
     query = _normalize(name)
     best_match, best_score = None, 0.0
