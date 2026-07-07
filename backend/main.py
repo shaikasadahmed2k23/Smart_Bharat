@@ -62,6 +62,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 # Middleware stack: gzip compression, CORS, custom rate-limiting + security headers
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
