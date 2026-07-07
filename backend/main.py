@@ -74,7 +74,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(rate_limit_middleware)  # type: ignore
+# app.add_middleware(rate_limit_middleware)  # type: ignore
+app.middleware("http")(rate_limit_middleware)
 
 
 @app.get("/health")
