@@ -70,8 +70,6 @@ Smart Bharat answers this with a hybrid architecture: a **deterministic data cat
   </table>
 </div>
 
-> Place your three screenshots inside a `/screenshots` folder at the repo root, named `screenshot1.png`, `screenshot2.png`, and `screenshot3.png` (or update the `src` paths above to match your actual filenames). `screenshot1` renders full-width; `screenshot2` and `screenshot3` render side by side at 50% width each.
-
 ---
 
 ## ✨ Features
